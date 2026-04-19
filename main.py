@@ -270,26 +270,20 @@ HTML_CONTENT = """
         .fc-col-header-cell { background-color: #f9fafb; padding: 8px 0; font-weight: 600; text-align: center; }
         .fc-event { cursor: pointer; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); height: auto !important; margin-bottom: 2px !important;}
         .fc-event-title { white-space: normal !important; word-break: break-word !important; line-height: 1.5 !important; padding: 4px 6px !important; font-size: 0.9rem;}
-
         .tab-active { border-bottom: 3px solid #1E40AF; color: #1E3A8A; font-weight: 800; }
         .tab-inactive { color: #6B7280; }
-
         .tag-jichu { background-color: #DBEAFE; color: #1E40AF; border: 1px solid #BFDBFE; }
         .tag-chengguo { background-color: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
-
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); }
-
-        /* 防止选中文字导致拖拽异常 */
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2); }
         body { user-select: none; }
         input, textarea { user-select: text; }
+        #task-modal, #custom-confirm-modal { transition: opacity 0.2s ease-in-out; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 h-screen flex flex-col font-sans">
-
     <header class="bg-white border-b shadow-sm sticky top-0 z-40" style="-webkit-app-region: drag;">
         <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col items-center">
             <h1 class="text-3xl font-black text-slate-800 tracking-tighter mb-4">SDAU 软院效率平台</h1>
@@ -321,7 +315,7 @@ HTML_CONTENT = """
         </div>
     </main>
 
-    <div id="task-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex justify-center items-center z-50">
+    <div id="task-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex justify-center items-center z-40">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
             <h3 id="task-modal-title" class="text-xl font-bold mb-4 text-slate-800 border-b pb-2">日程信息</h3>
             <input type="hidden" id="t-id"><input type="hidden" id="t-start"><input type="hidden" id="t-end"><input type="hidden" id="t-allday">
@@ -330,12 +324,24 @@ HTML_CONTENT = """
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">待办内容</label>
                 <textarea id="t-title" rows="3" class="w-full border-2 rounded-xl p-3 bg-slate-50 focus:border-indigo-500 outline-none resize-none"></textarea>
             </div>
-            <div class="mb-6 flex justify-between items-center bg-slate-50 p-3 rounded-xl border-2 border-transparent">
-                <label class="text-sm font-bold text-slate-700">标记颜色</label>
-                <div class="flex items-center space-x-2">
-                    <input type="color" id="t-color" value="#4F46E5" class="w-10 h-10 rounded cursor-pointer border-0 bg-transparent">
+
+            <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
+                <div class="flex justify-between items-center mb-3">
+                    <label class="text-sm font-bold text-slate-700">自定义颜色</label>
+                    <div class="flex items-center space-x-3">
+                        <button type="button" onclick="pickColorFromScreen()" class="px-2 py-1.5 bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg transition-colors shadow-sm flex items-center space-x-1" title="隐藏窗口并取色">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/></svg>
+                            <span class="text-xs font-bold">屏幕吸管</span>
+                        </button>
+                        <input type="color" id="t-color" value="#4F46E5" class="w-10 h-10 rounded-lg cursor-pointer border-0 bg-transparent p-0 shadow-sm hover:scale-105 transition">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase mb-2">最近使用</label>
+                    <div id="recent-colors-container" class="flex flex-wrap gap-2"></div>
                 </div>
             </div>
+
             <div class="flex flex-col space-y-2">
                 <button onclick="saveTask()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700">保存日程</button>
                 <div id="task-actions" class="hidden grid-cols-2 gap-2 mt-2">
@@ -347,53 +353,21 @@ HTML_CONTENT = """
         </div>
     </div>
 
-    <div id="eval-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex justify-center items-center z-50">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
-            <h3 id="eval-modal-title" class="text-2xl font-bold mb-6 text-slate-800">新增加分项</h3>
-            <form id="eval-form" onsubmit="handleEvalSubmit(event)">
-                <input type="hidden" id="f-id">
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">模块</label>
-                        <select id="f-module" class="w-full border-2 rounded-xl p-3 bg-slate-50 focus:border-indigo-500 outline-none font-bold text-indigo-900">
-                            <option value="身心">身心素养</option><option value="文艺">文艺素养</option>
-                            <option value="劳动">劳动素养</option><option value="创新">创新素养</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">类别</label>
-                        <select id="f-sub" class="w-full border-2 rounded-xl p-3 bg-slate-50 focus:border-indigo-500 outline-none">
-                            <option value="基础">基础性评价</option><option value="成果">成果性评价</option><option value="突破">突破性 (创新专享)</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">项目标题</label>
-                    <input type="text" id="f-title" class="w-full border-2 rounded-xl p-3 bg-slate-50 focus:border-indigo-500 outline-none" required>
-                </div>
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">分值 (0.001精度)</label>
-                        <input type="number" step="0.001" id="f-score" class="w-full border-2 rounded-xl p-3 bg-slate-50 focus:border-indigo-500 outline-none" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">记录日期</label>
-                        <input type="date" id="f-date" class="w-full border-2 rounded-xl p-3 bg-slate-50 focus:border-indigo-500 outline-none" required>
-                    </div>
-                </div>
-                <div class="mb-6">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">证明材料图片</label>
-                    <input type="file" id="f-file" accept="image/*" class="text-sm block w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-indigo-50 file:text-indigo-700">
-                </div>
-                <div class="flex justify-end space-x-4">
-                    <button type="button" onclick="closeEvalModal()" class="px-6 py-2 font-bold text-slate-400">取消</button>
-                    <button type="submit" class="bg-indigo-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg">保存更改</button>
-                </div>
-            </form>
+    <div id="custom-confirm-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md hidden flex justify-center items-center z-[60] opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center transform scale-95 transition-transform duration-200" id="confirm-modal-content">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-100 mb-4">
+                <svg class="w-8 h-8 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="text-2xl font-black text-slate-800 mb-2">确认彻底删除？</h3>
+            <p class="text-sm text-slate-500 mb-8">此操作无法恢复，相关数据将从数据库中永久移除。</p>
+            <div class="flex space-x-4">
+                <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition">取消</button>
+                <button id="btn-do-delete" class="flex-1 py-3 bg-rose-600 text-white rounded-xl font-bold shadow-lg hover:bg-rose-700 transition hover:-translate-y-0.5">确认删除</button>
+            </div>
         </div>
     </div>
 
-    <div id="img-preview" class="fixed inset-0 bg-black/90 hidden z-[60] flex items-center justify-center p-8" onclick="this.classList.add('hidden')">
+    <div id="img-preview" class="fixed inset-0 bg-black/90 hidden z-[70] flex items-center justify-center p-8" onclick="this.classList.add('hidden')">
         <img id="preview-src" src="" class="max-w-full max-h-full rounded-lg shadow-2xl">
     </div>
 
@@ -403,6 +377,90 @@ HTML_CONTENT = """
             "身心": { max: 15, limits: {"基础":9, "成果":6} }, "文艺": { max: 15, limits: {"基础":9, "成果":6} },
             "劳动": { max: 25, limits: {"基础":15, "成果":10} }, "创新": { max: 45, limits: {"基础":5, "突破":40} }
         };
+
+        // ====== 全新：删除调度系统 ======
+        let pendingDeleteAction = null;
+
+        function openConfirmModal(actionCallback) {
+            pendingDeleteAction = actionCallback;
+            const modal = document.getElementById('custom-confirm-modal');
+            const content = document.getElementById('confirm-modal-content');
+            modal.classList.remove('hidden');
+            void modal.offsetWidth; 
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('custom-confirm-modal');
+            const content = document.getElementById('confirm-modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                pendingDeleteAction = null;
+            }, 200); 
+        }
+
+        document.getElementById('btn-do-delete').addEventListener('click', async () => {
+            if (pendingDeleteAction) {
+                await pendingDeleteAction();
+                closeConfirmModal();
+            }
+        });
+        // ==================================
+
+        // 颜色管理逻辑
+        const MAX_RECENT_COLORS = 10;
+        const DEFAULT_COLORS = ['#4F46E5', '#E11D48', '#059669', '#D97706', '#7C3AED'];
+
+        function loadRecentColors() {
+            let colors = JSON.parse(localStorage.getItem('sdau_recent_colors'));
+            if (!colors || colors.length === 0) {
+                colors = DEFAULT_COLORS;
+                localStorage.setItem('sdau_recent_colors', JSON.stringify(colors));
+            }
+            renderRecentColors(colors);
+        }
+
+        function renderRecentColors(colors) {
+            const container = document.getElementById('recent-colors-container');
+            container.innerHTML = '';
+            colors.forEach(color => {
+                const btn = document.createElement('div');
+                btn.className = 'w-6 h-6 rounded-full cursor-pointer hover:scale-125 transition-transform shadow border border-slate-200/50';
+                btn.style.backgroundColor = color;
+                btn.onclick = () => { document.getElementById('t-color').value = color; };
+                container.appendChild(btn);
+            });
+        }
+
+        function saveRecentColor(newColor) {
+            let colors = JSON.parse(localStorage.getItem('sdau_recent_colors')) || DEFAULT_COLORS;
+            colors = colors.filter(c => c.toLowerCase() !== newColor.toLowerCase());
+            colors.unshift(newColor);
+            if (colors.length > MAX_RECENT_COLORS) colors = colors.slice(0, MAX_RECENT_COLORS);
+            localStorage.setItem('sdau_recent_colors', JSON.stringify(colors));
+            renderRecentColors(colors);
+        }
+
+        async function pickColorFromScreen() {
+            if (!window.EyeDropper) {
+                alert("当前系统/浏览器内核不支持高级取色API，请使用右侧调色盘手动选择。");
+                return;
+            }
+            const modal = document.getElementById('task-modal');
+            modal.style.opacity = '0';
+            modal.style.pointerEvents = 'none';
+            try {
+                const eyeDropper = new EyeDropper();
+                const result = await eyeDropper.open();
+                document.getElementById('t-color').value = result.sRGBHex;
+            } catch (e) {} finally {
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+            }
+        }
 
         function switchTab(t) {
             const isCal = t === 'cal';
@@ -421,39 +479,69 @@ HTML_CONTENT = """
             const title = document.getElementById('t-title').value.trim();
             const color = document.getElementById('t-color').value;
             if(!title) return alert("待办内容不能为空！");
+
+            saveRecentColor(color);
+
             if(id) {
                 await fetch(`/api/tasks/${id}/edit`, {
                     method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title: title, color_hex: color})
                 });
+                let ev = calendar.getEventById(id);
+                if (ev) {
+                    ev.setProp('title', title);
+                    ev.setExtendedProp('raw_color', color);
+                    let isCompleted = ev.extendedProps.is_completed;
+                    ev.setProp('backgroundColor', isCompleted ? "#10B981" : color);
+                    ev.setProp('borderColor', isCompleted ? "#10B981" : color);
+                }
             } else {
                 const start = document.getElementById('t-start').value;
                 const end = document.getElementById('t-end').value;
                 const allday = document.getElementById('t-allday').value === 'true';
-                await fetch('/api/tasks', { 
+                let res = await fetch('/api/tasks', { 
                     method: 'POST', headers: {'Content-Type':'application/json'}, 
                     body: JSON.stringify({title: title, start_date: start, end_date: end || null, all_day: allday, color_hex: color})
                 });
+                let data = await res.json();
+                calendar.addEvent({
+                    id: data.id, title: title, start: start, end: end || null, allDay: allday,
+                    backgroundColor: color, borderColor: color,
+                    extendedProps: { is_completed: false, raw_color: color }
+                });
             }
-            closeTaskModal(); calendar.refetchEvents();
+            closeTaskModal();
         }
 
         async function toggleTask() {
             const id = document.getElementById('t-id').value;
             await fetch(`/api/tasks/${id}/toggle`, {method:'PATCH'});
-            closeTaskModal(); calendar.refetchEvents();
+            let ev = calendar.getEventById(id);
+            if (ev) {
+                let isComp = !ev.extendedProps.is_completed;
+                ev.setExtendedProp('is_completed', isComp);
+                let rawColor = ev.extendedProps.raw_color;
+                ev.setProp('backgroundColor', isComp ? "#10B981" : rawColor);
+                ev.setProp('borderColor', isComp ? "#10B981" : rawColor);
+            }
+            closeTaskModal();
         }
 
-        async function deleteTask() {
-            if(confirm('彻底删除？')) {
-                const id = document.getElementById('t-id').value;
+        function deleteTask() {
+            const id = document.getElementById('t-id').value;
+            openConfirmModal(async () => {
                 await fetch(`/api/tasks/${id}`, {method:'DELETE'});
-                closeTaskModal(); calendar.refetchEvents();
-            }
+                let ev = calendar.getEventById(id);
+                if (ev) ev.remove();
+                closeTaskModal();
+            });
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            loadRecentColors();
+
             calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
                 initialView: 'dayGridMonth',
+                eventOrder: "backgroundColor,title",
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
                 events: '/api/tasks', editable: true, selectable: true,
                 select: function(info) {
@@ -471,6 +559,14 @@ HTML_CONTENT = """
                         body: JSON.stringify({start_date:info.event.startStr, end_date:info.event.endStr||null, all_day:info.event.allDay})
                     });
                 },
+                // ====== 核心修复：新增拉长/缩短日程的保存事件 ======
+                eventResize: async (info) => {
+                    await fetch(`/api/tasks/${info.event.id}`, {
+                        method: 'PUT', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({start_date:info.event.startStr, end_date:info.event.endStr||null, all_day:info.event.allDay})
+                    });
+                },
+                // ===============================================
                 eventClick: function(info) {
                     document.getElementById('t-id').value = info.event.id;
                     document.getElementById('t-title').value = info.event.title;
@@ -489,6 +585,7 @@ HTML_CONTENT = """
             calendar.render();
         });
 
+        // 综测部分逻辑
         async function loadEval() {
             const res = await fetch('/api/eval'); const records = await res.json();
             const grid = document.getElementById('modules-grid'); grid.innerHTML = '';
@@ -583,9 +680,13 @@ HTML_CONTENT = """
             closeEvalModal(); loadEval();
         }
 
-        async function delEvalRecord(id) {
-            if(confirm('彻底删除？')) { await fetch(`/api/eval/${id}`, { method: 'DELETE' }); loadEval(); }
+        function delEvalRecord(id) {
+            openConfirmModal(async () => {
+                await fetch(`/api/eval/${id}`, { method: 'DELETE' }); 
+                loadEval();
+            });
         }
+
         function viewImg(src) { document.getElementById('preview-src').src = src; document.getElementById('img-preview').classList.remove('hidden'); }
     </script>
 </body>
@@ -599,21 +700,13 @@ def read_root():
 
 
 def start_server():
-    # 关闭多余的日志输出，让终端保持干净
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="error")
 
 
 if __name__ == "__main__":
-    # 移除了所有的 print 语句，防止 Windows GBK 编码和隐藏控制台冲突
-
-    # 1. 在后台线程启动 FastAPI 服务
     server_thread = threading.Thread(target=start_server, daemon=True)
     server_thread.start()
-
-    # 稍微等一秒，确保后端接口已经就绪
     time.sleep(1)
-
-    # 2. 启动原生的窗口壳子加载网页
     webview.create_window(
         title='SDAU 软院效率中枢',
         url='http://127.0.0.1:8000',
@@ -621,5 +714,4 @@ if __name__ == "__main__":
         height=850,
         min_size=(1024, 700)
     )
-    # 这行代码会阻塞主线程，直到你关掉软件窗口
     webview.start()
